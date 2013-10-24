@@ -127,7 +127,7 @@ local function ipmerge(tbl, cur)
 end
 
 -- Get files, should use luasocket but it not compatible with Lua5.2
--- os.execute("wget "..CNR_APNIC)
+os.execute("wget "..CNR_APNIC)
 local filename = {string.match(CNR_APNIC, "(.-)([^\\/]-%.?([^%.\\/]*))$")}
 filename = filename[#filename]
 

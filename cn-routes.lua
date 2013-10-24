@@ -1,16 +1,34 @@
 #!/bin/env lua
 
 --[[
+ working for Lua5.2 only 
  This is based on http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest
  And CN|ipv4 is used here
  It is not exactly, but try to make the route table small
- Author: liuake@gmail.com
+ Author: leon@sharehub.github.io
 --]]
 
-local bit32 = require("bit32")
+--[[ CONFIGRUATION --]]
+
+-- FILE
+local CNR_APNIC = "http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
+
+-- CouNtry CODE	-- you could define you own for other country
+local CNR_CNCODE = "CN"
+
+local CNR_IPVER = "ipv4" -- ip version
+
+local CNR_PURE_IP = false	-- pure IP/mask or OpenVPN
 
 -- ignore ip who's rang less than this will be merged
 local GAP=2^19
+
+--[[ END CONFIGRUATION --]]
+
+
+
+local bit32 = require("bit32")
+local string = require("string")
 
 -- make ip to int 
 local function ip2int(str)
@@ -108,20 +126,32 @@ local function ipmerge(tbl, cur)
   end
 end
 
+-- Get files, should use luasocket but it not compatible with Lua5.2
+-- os.execute("wget "..CNR_APNIC)
+local filename = {string.match(CNR_APNIC, "(.-)([^\\/]-%.?([^%.\\/]*))$")}
+filename = filename[#filename]
+
 --[[
  main here
 --]]
 
-io.input("CN.ip")
+io.input(filename)
 
+-- init table
 local tbl = {} 
 for line in io.lines() do
-  fileiter = string.gmatch(line, "[^%s]+")
+  fileiter = string.gmatch(line, "([^|]+)")
+  apnic = fileiter()
+  cncode = fileiter()
+  type = fileiter()
   ipstr = fileiter()
   rang = fileiter()
 
-  ipint = ip2int(ipstr)
-  ipmerge(tbl, {start=ipint, iend=ipint+rang})
+  if cncode == CNR_CNCODE and type == CNR_IPVER then
+    -- print(line)
+    ipint = ip2int(ipstr)
+    ipmerge(tbl, {start=ipint, iend=ipint+rang})
+  end
 end
 
 --[[
@@ -132,7 +162,9 @@ end
 
 for i=1, #tbl do
   rg = tbl[i].iend-tbl[i].start
-  
-  -- print("route ", int2ip(tbl[i].start), rang2mask(rg), "net_gateway") -- OpenVPN
-  print(int2ip(tbl[i].start), rang2mask(rg))
+  if CNR_PURE_IP then
+    print(int2ip(tbl[i].start), rang2mask(rg))
+  else
+    print("route ", int2ip(tbl[i].start), rang2mask(rg), "net_gateway")
+  end
 end

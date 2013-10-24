@@ -143,11 +143,11 @@ for line in io.lines() do
   fileiter = string.gmatch(line, "([^|]+)")
   apnic = fileiter()
   cncode = fileiter()
-  type = fileiter()
+  iptype = fileiter()
   ipstr = fileiter()
   rang = fileiter()
 
-  if cncode == CNR_CNCODE and type == CNR_IPVER then
+  if cncode == CNR_CNCODE and iptype == CNR_IPVER then
     -- print(line)
     ipint = ip2int(ipstr)
     ipmerge(tbl, {start=ipint, iend=ipint+rang})

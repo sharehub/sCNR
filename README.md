@@ -23,6 +23,6 @@ This file is intend for OpenVPN client route configuration
 
 More Details
 -------------
-This script will merge the adjacent IP rangs if they are less than a GAP(we use 2^19) defined by user. By this way,it makes the size of this routing table really small but still covers 100% of chinese IP. 
+This script will merge the adjacent IP rangs if they are less than a GAP(we use 2^13 as default) defined by user. By this way,it makes the size of this routing table really small but still covers 100% of chinese IP. 
 
 Of course, it will also covere a few other Asia(Hongkong, Taiwan, etc) IP rangs that do not belong to China. But some statistic show, most of the international IP traffic finally go to EU/NAM regions, which will still be rightly routed. So, consider these weight, it still could get 99% accuracy.

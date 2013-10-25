@@ -93,8 +93,6 @@ local function rangnormalize(tbl)
   tbl[#tbl].iend = tbl[#tbl].start + 2^idx -1 
 end
 
-local rangcheck = nil	-- we want recurration
-
 -- Let merge backward
 local function rangcheck(tbl)
   rangnormalize(tbl)

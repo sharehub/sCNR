@@ -18,10 +18,10 @@ local CNR_CNCODE = "CN"
 
 local CNR_IPVER = "ipv4" -- ip version
 
-local CNR_PURE_IP = false	-- pure IP/mask or OpenVPN
+local CNR_PURE_IP = true	-- pure IP/mask or OpenVPN
 
 -- ignore ip who's rang less than this will be merged
-local GAP=2^19
+local GAP=2^13
 
 --[[ END CONFIGRUATION --]]
 
@@ -50,7 +50,7 @@ local function getint2mask()
   mask = {}
   return function(i)
     if mask[i] then return mask[i] end
-    mask[i] = int2ip(bit32.bnot(2^i-1))
+    mask[i] = int2ip(bit32.bnot(i-1))
     return mask[i]
   end
 end
@@ -58,15 +58,15 @@ end
 local int2mask = getint2mask()
 
 -- make a rang value to a mask
-local exp2 = {} -- make it global
 local function getrang2mask()
+  local exp2 = {} 
   return function(rang)
     for j = 1, 32 do
       if not exp2[j] then
         exp2[j] = 2^j
       end
       if exp2[j] >= rang then
-	return int2mask(j)
+	return int2mask(exp2[j])
       end
     end
     error("mask "..i.." not valid!")
@@ -75,65 +75,64 @@ end
 
 local rang2mask = getrang2mask()
 
-local lastmerge = nil	-- we want recurration
+local function rangnormalize(tbl)
+  istart = tbl[#tbl].start
+  iend = tbl[#tbl].iend
+  idx = 1
+  for i = 1, 32 do
+    istart = bit32.rshift(istart, 1)
+    iend = bit32.rshift(iend, 1)
+    if istart == iend then idx=i break end
+  end
+
+  if idx >= 32 then
+    error("Rang Error:"..tbl[#tbl].start.." - "..tbl[#tbl].iend)
+  end
+
+  tbl[#tbl].start = bit32.band(tbl[#tbl].start, bit32.bnot(2^idx - 1))
+  tbl[#tbl].iend = tbl[#tbl].start + 2^idx -1 
+end
+
 local rangcheck = nil	-- we want recurration
 
-lastmerge = function (tbl)
+-- Let merge backward
+local function rangcheck(tbl)
+  rangnormalize(tbl)
+  
   lastr = tbl[#tbl-1]
   curr = tbl[#tbl]
-  if lastr and lastr.iend > curr.start then
+  if lastr and curr.start - lastr.iend < GAP then
     lastr.iend = curr.iend
     tbl[#tbl] = nil
     rangcheck(tbl)
-    lastmerge(tbl) -- merge again
   end 
-end
-
--- Let check it again
-rangcheck = function (tbl)
-  rg = tbl[#tbl].iend - tbl[#tbl].start
-  for i = 1, 32 do
-    if not exp2[i] then
-      exp2[i] = 2^i
-    end
-    if exp2[i] >= rg then
-      tbl[#tbl].start = bit32.band(tbl[#tbl].start, bit32.bnot(exp2[i]-1))
-      tbl[#tbl].iend = tbl[#tbl].start + exp2[i]
-      lastmerge(tbl)
-      return
-    end
-  end
 end
 
 -- merge the IP that less than GAP
 local function ipmerge(tbl, cur)
+  -- print("merge "..cur.start.." - "..cur.iend)
   if #tbl == 0 then
     tbl[#tbl+1] = cur
     return
   end
 
+  --  Merge the following nodes
   if cur.start - tbl[#tbl].iend < GAP then
     tbl[#tbl].iend = cur.iend	-- merge it
-    -- After merge, the IP's start address may not current, we need fix it and merge it again #tbl-1
-    -- rangcheck(tbl) 
-  else			-- > GAP, will start next, but we need rangcheck again
-    rangcheck(tbl)
-    if cur.start - tbl[#tbl].iend < GAP then
-      tbl[#tbl].iend = cur.iend
-    else
-      tbl[#tbl+1] = cur
-    end
+  else
+    rangcheck(tbl) -- head merge should be OK in this recurration
+    tbl[#tbl+1] = cur	-- add it to table
   end
 end
+
+--[[
+ main here
+--]]
 
 -- Get files, should use luasocket but it not compatible with Lua5.2
 os.execute("wget "..CNR_APNIC)
 local filename = {string.match(CNR_APNIC, "(.-)([^\\/]-%.?([^%.\\/]*))$")}
 filename = filename[#filename]
-
---[[
- main here
---]]
 
 io.input(filename)
 
@@ -143,14 +142,14 @@ for line in io.lines() do
   fileiter = string.gmatch(line, "([^|]+)")
   apnic = fileiter()
   cncode = fileiter()
-  iptype = fileiter()
+  type = fileiter()
   ipstr = fileiter()
   rang = fileiter()
 
-  if cncode == CNR_CNCODE and iptype == CNR_IPVER then
+  if cncode == CNR_CNCODE and type == CNR_IPVER then
     -- print(line)
     ipint = ip2int(ipstr)
-    ipmerge(tbl, {start=ipint, iend=ipint+rang})
+    ipmerge(tbl, {start=ipint, iend=ipint+rang-1})
   end
 end
 

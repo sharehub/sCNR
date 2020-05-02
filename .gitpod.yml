@@ -5,3 +5,6 @@ tasks:
 vscode:
   extensions:
     - MS-CEINTL.vscode-language-pack-zh-hans@1.450:9Xum7Tc2l393C65cKlhhqA==
+    - actboy168.lua-debug@1.23.4:K+eDo8iRV75G7ng+Qsq8eQ==
+image:
+  file: .gitpod.Dockerfile
